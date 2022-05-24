@@ -1,0 +1,115 @@
+/*
+Create a visualization that provides a breakdown between the male and female employees working in the company each year, starting from 1990.
+Create visualization with a Bar Chart
+*/
+
+SELECT
+	YEAR(de.from_date) AS calendar_year, 	      # Extract year new emp started
+    e.gender,								                  # Male vs female
+    COUNT(e.emp_no) AS num_of_emp 			      # Calculate total number of emp
+FROM
+	t_employees e 							                # Join t_employees and t_dept_emp tables
+JOIN
+	t_dept_emp de ON e.emp_no = de.emp_no
+GROUP BY									
+	calendar_year, e.gender					            # Group count of emp by year and gender
+HAVING calendar_year >= 1990			          	# Set starting from 1990 condition
+ORDER BY calendar_year;
+
+
+/*
+Compare the number of male managers to the number of female managers from different departments for each year, starting from 1990. 
+Create visualization with an Area Chart
+*/
+
+SELECT
+	d.dept_name,												                    # Different department names
+    ee.gender, 													                  # Male vs female managers
+    dm.emp_no,												  	                # Needed to join emp.table and dept.table as manager of dept.
+    dm.from_date,												                  # Years active as manager
+    dm.to_date,
+    e.calendar_year,											                # Years employed at company
+    CASE														                      # Calculate if active as manager at company given a calendar based off hired dates between from and to date
+		WHEN YEAR(dm.to_date) >= e.calendar_year 
+			AND YEAR(dm.from_date) <= e.calendar_year THEN 1
+            ELSE 0
+    END AS active  													
+FROM															                        # Retrieve result only for calendar years where data is available and join all designated tables
+	(SELECT														
+		YEAR(hire_date) as calendar_year
+	FROM
+		t_employees
+	GROUP BY calendar_year) e										
+	CROSS JOIN
+    t_dept_manager dm
+    JOIN
+    t_departments d ON dm.dept_no = d.dept_no
+    JOIN
+    t_employees ee ON dm.emp_no = ee.emp_no
+ORDER BY dm.emp_no, calendar_year;
+
+
+/*
+Compare the average salary of female versus male employees in the entire company until year 2002, and add a filter allowing you to see that per each department.
+Create visualization with a Line Chart
+*/
+
+Select
+	e.gender,									                        # Female vs male
+    d.dept_name,								                    # Filter by name of dept
+    ROUND(AVG(s.salary), 2) as salary,			        # Calculated avg salaries 
+    YEAR(s.from_date) as calendar_year			        # Compared years
+FROM											                          # Join all utilized tables together			
+	t_salaries s   
+        JOIN
+     t_employees e ON s.emp_no = e.emp_no
+		JOIN
+     t_dept_emp de ON de.emp_no = e.emp_no
+		JOIN
+	t_departments d ON d.dept_no = de.dept_no   
+GROUP BY d.dept_no, e.gender, calendar_year		      # Separate data by department, gender, and year
+HAVING calendar_year <= 2002					              # Restrict results no later than 2002
+ORDER BY d.dept_no;
+
+
+/*
+Create an SQL stored procedure that will allow you to obtain the average male and female salary per department 
+	  within a certain salary range. Let this range be defined by two values the user can insert when calling the procedure.
+    My manager informs few people earned less than $50k and more than $90k.
+Create visualization as a double bar chart. 
+*/
+
+SELECT 										                              # Check Min and Max salaries
+    MIN(salary)
+FROM
+    t_salaries;
+SELECT 
+    MAX(salary)
+FROM
+    t_salaries;
+
+DROP PROCEDURE IF EXISTS filter_salary;
+
+DELIMITER $$
+CREATE PROCEDURE filter_salary (IN p_min_salary FLOAT, IN p_max_salary FLOAT)	# Create procedure name and IN parameters in $ amounts
+BEGIN
+SELECT
+  e.gender,											                        # Results for the average male and female salary per department										
+	AVG(s.salary) as avg_salary, 
+  d.dept_name
+FROM
+	t_salaries s										                      # Join sal.table and emp.table with dept.table
+		JOIN
+    t_employees e ON s.emp_no = e.emp_no
+		JOIN
+    t_dept_emp de ON de.emp_no = e.emp_no
+		JOIN
+	t_departments d ON d.dept_no = de.dept_no
+WHERE s.salary BETWEEN p_min_salary AND p_max_salary	  # Only salary values betwen min and max parameters considered
+GROUP BY d.dept_no, e.gender;
+END$$
+
+DELIMITER ;    
+
+CALL filter_salary(50000, 90000);						            # Manager informs few people earned less than $50k and more than $90k.
+
