@@ -1,7 +1,7 @@
 # MySQL-Project
 
-This final project from the MySQL for Data Analytics and Business Intelligence Certificate 
-explores employee data within a company. 
+This final project from the UDemy - MySQL for Data Analytics and Business Intelligence Certificate 
+explores employee data within a corporation. 
 
 I've included the SQL code used to qurey and gather the data used to create my visualization on Tableau.
 
